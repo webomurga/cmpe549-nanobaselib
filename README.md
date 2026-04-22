@@ -94,6 +94,3 @@ The `experimental/` folder contains prototypes designed to overcome current sequ
 * **Gülşen Sabak**
 * **Süleyman Emir Taşan**
 * **Hüseyin Emir Akdağ**
-
-*Developed for CMPE549.*
-```
