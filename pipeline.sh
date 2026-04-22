@@ -35,7 +35,7 @@ fi
 # STEP 1: Feature Extraction
 # ---------------------------------------------------------
 echo "\n[1/4] Extracting Tabular Biophysical Features..."
-python src/1_extract_eventalign_features.py \
+python src/extract_eventalign_features.py \
     --fastq $FASTQ_FILE \
     --eventalign $EVENTALIGN_FILE \
     --target_base T \
@@ -45,7 +45,7 @@ python src/1_extract_eventalign_features.py \
 # STEP 2: Unsupervised Denoising
 # ---------------------------------------------------------
 echo "\n[2/4] Running GMM Physics Filter to Denoise Labels..."
-python src/2_denoise_labels.py \
+python src/denoise_labels.py \
     --input $RAW_TENSOR_FILE \
     --mod_type pU \
     --output data/processed/clean_dataset.pt
@@ -54,7 +54,7 @@ python src/2_denoise_labels.py \
 # STEP 3: Multi-Task CRNN Training
 # ---------------------------------------------------------
 echo "\n[3/4] Training the Multi-Task CRNN..."
-python src/3_train_mtl.py \
+python src/train_mtl.py \
     --dataset data/processed/clean_dataset.pt \
     --epochs 50 \
     --batch_size 1024 \
@@ -64,7 +64,7 @@ python src/3_train_mtl.py \
 # STEP 4: Live Inference Demo
 # ---------------------------------------------------------
 echo "\n[4/4] Running Live Inference Demo..."
-python src/4_inference_demo.py \
+python src/inference_demo.py \
     --dataset data/processed/clean_dataset.pt \
     --weights data/weights/nanospeech_mtl_best.pth \
     --num_samples 5000 \
