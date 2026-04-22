@@ -1,0 +1,81 @@
+import os
+import argparse
+import numpy as np
+import pandas as pd
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Step 1: Extract Tabular Biophysical Features")
+    parser.add_argument("--fastq", required=True, help="Path to the basecalled FASTQ file")
+    parser.add_argument("--eventalign", required=True, help="Path to the Nanopolish eventalign.txt file")
+    parser.add_argument("--target_base", default="T", help="Target center base (T for pU, A for m6A)")
+    parser.add_argument("--output", default="extracted_features.csv", help="Output CSV file name")
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+    
+    print("[1/3] Mapping FASTQ Read Indices to UUIDs...")
+    index_to_id = {}
+    with open(args.fastq, "r") as f:
+        for i, line in enumerate(f):
+            if i % 4 == 0:
+                rid = line.strip().split()[0][1:]
+                index_to_id[i // 4] = rid
+
+    print(f"[2/3] Parsing EventAlign for Target Base '{args.target_base}'...")
+    features = []
+    read_ids = []
+    current_read = None
+    event_buffer = []
+    
+    with open(args.eventalign, "r") as f:
+        next(f) # Skip header
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) < 15: continue
+            
+            kmer = parts[2]
+            read_idx = int(parts[3])
+            
+            event_mean = float(parts[6])
+            event_stdv = float(parts[7])
+            event_length = float(parts[8])
+            
+            if read_idx not in index_to_id: continue
+            rid = index_to_id[read_idx]
+            
+            if rid != current_read:
+                current_read = rid
+                event_buffer = []
+                
+            event_buffer.append({
+                'kmer': kmer, 'mean': event_mean, 'stdv': event_stdv, 'length': event_length
+            })
+            
+            if len(event_buffer) == 3:
+                mid_base = event_buffer[1]['kmer'][2]
+                
+                if mid_base == args.target_base:
+                    row_features = [
+                        event_buffer[0]['mean'], event_buffer[0]['stdv'], event_buffer[0]['length'],
+                        event_buffer[1]['mean'], event_buffer[1]['stdv'], event_buffer[1]['length'], 
+                        event_buffer[2]['mean'], event_buffer[2]['stdv'], event_buffer[2]['length']
+                    ]
+                    features.append(row_features)
+                    read_ids.append(rid)
+                
+                event_buffer.pop(0)
+
+    print("[3/3] Saving extracted tabular features...")
+    df = pd.DataFrame(features, columns=[
+        "Prev_Mean", "Prev_Stdv", "Prev_Dwell",
+        "Target_Mean", "Target_Stdv", "Target_Dwell",
+        "Next_Mean", "Next_Stdv", "Next_Dwell"
+    ])
+    df.insert(0, "Read_ID", read_ids)
+    df.to_csv(args.output, index=False)
+    
+    print(f"Extraction Complete! Saved {len(features)} sequences to {args.output}")
+
+if __name__ == "__main__":
+    main()
